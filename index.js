@@ -274,12 +274,12 @@ async function run() {
           total_amount: info.total_price,
           currency: "BDT",
           tran_id: trxn_id,
-          success_url: `https://tasty-pizza-server.vercel.app/payment-success/${trxn_id}`,
+          success_url: `https://tasty-pizza-restaurant.web.app/payment-success/${trxn_id}?uid=${info.uid}`,
           fail_url:
-            "https://tasty-pizza-server.vercel.app/user-dashboard/my-cart",
+            "https://tasty-pizza-restaurant.web.app/user-dashboard/my-cart",
           cancel_url:
-            "https://tasty-pizza-server.vercel.app/user-dashboard/my-cart",
-          ipn_url: "https://tasty-pizza-server.vercel.app/ipn",
+            "https://tasty-pizza-restaurant.web.app/user-dashboard/my-cart",
+          ipn_url: "https://tasty-pizza-restaurant.web.app/ipn",
           shipping_method: "Courier",
           product_name: "Computer.",
           product_category: "Electronic",
@@ -310,20 +310,24 @@ async function run() {
         await orderCollection.insertOne({
           ...info,
           transaction_id: data.tran_id,
-        });
-        await cartCollection.deleteMany({
-          _id: { $in: info.carts.map((e) => new ObjectId(e._id)) },
+          status: false,
         });
       } else {
         res.status(403).send(forbiddenAccess);
       }
     });
 
-    app.post("/payment/success/:tran_id", async (req, res) => {
-      console.log("Success:", req.body);
+    app.post("/payment-success/:tran_id", async (req, res) => {
       const tran_id = req.params.tran_id;
+      const cartList = await cartCollection
+        .find({ uid: { $eq: req.query.uid } })
+        .toArray();
+      console.log(cartList);
+      await cartCollection.deleteMany({
+        _id: { $in: cartList.map((e) => new ObjectId(e._id)) },
+      });
       res.redirect(
-        `https://tasty-pizza-server.vercel.app/payment-success/${tran_id}`
+        `https://tasty-pizza-restaurant.web.app/payment-success/${tran_id}`
       );
     });
     //--
