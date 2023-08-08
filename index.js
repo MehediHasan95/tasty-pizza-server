@@ -255,6 +255,25 @@ async function run() {
       }
     });
 
+    app.delete("/admin-order-delete/:id", verifyJWT, async (req, res) => {
+      const result = await orderCollection.deleteOne({
+        _id: new ObjectId(req.params.id),
+      });
+      res.send(result);
+    });
+
+    app.patch("/admin-order-delete/:id", verifyJWT, async (req, res) => {
+      const result = await orderCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        {
+          $set: {
+            status: true,
+          },
+        }
+      );
+      res.send(result);
+    });
+
     app.get("/my-orders", verifyJWT, async (req, res) => {
       if (req.decoded.uid === req.query.uid) {
         const results = await orderCollection
@@ -266,6 +285,13 @@ async function run() {
       }
     });
 
+    app.delete("/order-delete/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = orderCollection.deleteOne(query);
+      res.send(result);
+    });
+
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const info = req.body;
       const trxn_id = trxnIdGenerator();
@@ -274,12 +300,10 @@ async function run() {
           total_amount: info.total_price,
           currency: "BDT",
           tran_id: trxn_id,
-          success_url: `https://tasty-pizza-restaurant.web.app/payment-success/${trxn_id}?uid=${info.uid}`,
-          fail_url:
-            "https://tasty-pizza-restaurant.web.app/user-dashboard/my-cart",
-          cancel_url:
-            "https://tasty-pizza-restaurant.web.app/user-dashboard/my-cart",
-          ipn_url: "https://tasty-pizza-restaurant.web.app/ipn",
+          success_url: `http://localhost:8080/payment-success/${trxn_id}?uid=${info.uid}`,
+          fail_url: "http://localhost:8080/cancle-payment",
+          cancel_url: "http://localhost:8080/cancle-payment",
+          ipn_url: "http://localhost:5173/ipn",
           shipping_method: "Courier",
           product_name: "Computer.",
           product_category: "Electronic",
@@ -310,6 +334,7 @@ async function run() {
         await orderCollection.insertOne({
           ...info,
           transaction_id: data.tran_id,
+          payment_status: false,
           status: false,
         });
       } else {
@@ -322,14 +347,31 @@ async function run() {
       const cartList = await cartCollection
         .find({ uid: { $eq: req.query.uid } })
         .toArray();
-      console.log(cartList);
+      const confirmPayment = await orderCollection.findOne({
+        transaction_id: { $eq: req.params.tran_id },
+      });
+      await orderCollection.updateOne(
+        { _id: new ObjectId(confirmPayment._id) },
+        {
+          $set: { payment_status: true },
+        }
+      );
+      for (const element of confirmPayment.carts) {
+        await itemCollection.updateOne(
+          { _id: new ObjectId(element.itemId) },
+          { $inc: { quantity: -1 } }
+        );
+      }
       await cartCollection.deleteMany({
         _id: { $in: cartList.map((e) => new ObjectId(e._id)) },
       });
-      res.redirect(
-        `https://tasty-pizza-restaurant.web.app/payment-success/${tran_id}`
-      );
+      res.redirect(`http://localhost:5173/payment-success/${tran_id}`);
     });
+
+    app.post("/cancle-payment", (req, res) => {
+      res.redirect("http://localhost:5173/user-dashboard/my-cart");
+    });
+
     //--
   } finally {
     app.listen(port, () =>
