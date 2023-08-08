@@ -300,9 +300,9 @@ async function run() {
           total_amount: info.total_price,
           currency: "BDT",
           tran_id: trxn_id,
-          success_url: `http://localhost:8080/payment-success/${trxn_id}?uid=${info.uid}`,
-          fail_url: "http://localhost:8080/cancle-payment",
-          cancel_url: "http://localhost:8080/cancle-payment",
+          success_url: `https://tasty-pizza-server.vercel.app/payment-success/${trxn_id}?uid=${info.uid}`,
+          fail_url: "https://tasty-pizza-server.vercel.app/cancle-payment",
+          cancel_url: "https://tasty-pizza-server.vercel.app/cancle-payment",
           ipn_url: "http://localhost:5173/ipn",
           shipping_method: "Courier",
           product_name: "Computer.",
@@ -365,11 +365,15 @@ async function run() {
       await cartCollection.deleteMany({
         _id: { $in: cartList.map((e) => new ObjectId(e._id)) },
       });
-      res.redirect(`http://localhost:5173/payment-success/${tran_id}`);
+      res.redirect(
+        `https://tasty-pizza-restaurant.web.app/payment-success/${tran_id}`
+      );
     });
 
     app.post("/cancle-payment", (req, res) => {
-      res.redirect("http://localhost:5173/user-dashboard/my-cart");
+      res.redirect(
+        "https://tasty-pizza-restaurant.web.app/user-dashboard/my-cart"
+      );
     });
 
     //--
